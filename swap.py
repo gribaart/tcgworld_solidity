@@ -1,4 +1,4 @@
-// Off-chain Django database model of Swap Request
+# Off-chain Django database model of Swap Request
 
 class CrossChainSwap(models.Model):
     INITIAL = "INITIAL"
