@@ -1,5 +1,5 @@
 /**
- *Submitted for verification at Etherscan.io on 2021-12-07
+ *Submitted for verification at polygonscan.com on 2021-12-21
 */
 
 /**
@@ -14,14 +14,14 @@
  *░░░░░╚═╝░░░░╚════╝░░╚═════╝░░░░╚════╝░░╚════╝░╚═╝╚═╝░░╚══╝░░╚══════╝╚═╝░╚════╝░░░
  *
  * 
- * The ethTCGCoin20 is based on the Automatic Liquidity Pool & Custom Fees Architecture.
+ * The TCGCoin20 [ETH] is based on the Automatic Liquidity Pool & Custom Fees Architecture.
  *
  * 
  * SPDX-License-Identifier: MIT
  * 
  */
 
-pragma solidity ^0.8.10;
+pragma solidity 0.8.11;
 
 abstract contract Context {
     function _msgSender() internal view virtual returns (address) {
@@ -463,7 +463,7 @@ interface IERC20 {
 }
 
 
-contract ERC20FinalTestCoin11 is Context, IERC20, Ownable {
+contract ethTCGCoin20 is Context, IERC20, Ownable {
     using Address for address;
     using SafeMath for uint256;
 
@@ -484,8 +484,8 @@ contract ERC20FinalTestCoin11 is Context, IERC20, Ownable {
     uint256 private _reflectTotal = (MAX - (MAX % _takeTotal));
     uint256 private _takeFeeTotal;
 
-    string private constant _name = "FinalTestCoin 11.0";
-    string private constant _symbol = "FTC11";
+    string private constant _name = "TCG 2.0 ETH";
+    string private constant _symbol = "ethTCG2";
     uint8 private constant _decimals = 9;
 
     bool public _taxFeeFlag = false;
@@ -500,8 +500,8 @@ contract ERC20FinalTestCoin11 is Context, IERC20, Ownable {
     uint256 private _previousLiquiditySellFee = _liquiditySellFee;
 
 
-    IUniswapV2Router02 public immutable uniswapRouter;
-    address public immutable uniswapPair;
+    IUniswapV2Router02 public uniswapRouter;
+    address public uniswapPair;
 
     bool public isIntoLiquifySwap;
     bool public swapAndLiquifyEnabled = true;
@@ -524,12 +524,15 @@ contract ERC20FinalTestCoin11 is Context, IERC20, Ownable {
     event SetMaxLoopCount(uint value);
     event SetMaxTxPercent(uint value);
     event SetLiquidityFeePercent(uint value);
+    event SetSellFeeLiquidity(uint value);
     event ExcludedFromFee(address _address);
     event IncludeInFee(address _address);
     event ETHReceived(address _address);
     event Delivery(address _address,  uint256 amount);
     event AddLiquidity(uint256 coin_amount, uint256 bnb_amount);
     event SwapAndLiquifyEnabled(bool flag);
+    event RouterSet(address indexed router);
+
 
     modifier lockSwaping {
         isIntoLiquifySwap = true;
@@ -539,20 +542,38 @@ contract ERC20FinalTestCoin11 is Context, IERC20, Ownable {
 
     constructor () {
         _reflectOwned[_msgSender()] = _reflectTotal;
-        IUniswapV2Router02 _uniswapRouter = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+        _setRouterAddress(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506,0xc35DADB65012eC5796536bD9864eD8773aBc74C4);
+	    // _setRouterAddress(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D,0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f);	
+        
+        // _setRouterAddress(0x10ED43C718714eb63d5aA57B78B54704E256024E, 0x3328C0fE37E8ACa9763286630A9C33c23F0fAd1A);
+        _isExcludedFromFee[owner()] = true;
+        _isExcludedFromFee[address(this)] = true;
+        emit Transfer(address(0), _msgSender(), _takeTotal);
+    }
+    
+    function _setRouterAddressByOwner(address router, address factory) external onlyOwner() {
+        _setRouterAddress(router, factory);
+    }
+
+    function _setRouterAddress(address router, address factory) private {
+
+        IUniswapV2Router02 _uniswapRouter = IUniswapV2Router02(router);
 
         uniswapPair = IUniswapV2Factory(_uniswapRouter.factory())
             .createPair(address(this), _uniswapRouter.WETH());
 
         uniswapRouter = _uniswapRouter;
-        address payable _pancakeFactory = payable(0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f);
-
-        _isExcludedFromFee[owner()] = true;
-        _isExcludedFromFee[address(this)] = true;
+        
+        address payable _pancakeFactory = payable(factory);
         _isExcludedFromFee[_pancakeFactory] = true;
-
-        emit Transfer(address(0), _msgSender(), _takeTotal);
+        
+        emit RouterSet(router);
     }
+    
+    function _isV2Pair(address account) internal view returns(bool){
+        return (account == uniswapPair);
+    }
+
 
 
     // \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ BEP20 functions \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -658,7 +679,6 @@ contract ERC20FinalTestCoin11 is Context, IERC20, Ownable {
         _maxLoopCount = maxLoopCount;
     }
 
-
     function setMaxTxPercent(uint256 maxTxPercent) external onlyOwner() {
         emit SetMaxTxPercent(maxTxPercent);
         _maximumValueOfTransaction = _takeTotal.mul(maxTxPercent).div(
@@ -671,6 +691,7 @@ contract ERC20FinalTestCoin11 is Context, IERC20, Ownable {
     }
 
     function setLiquiditySellFeePercent(uint256 liquiditySellFee) external onlyOwner() {
+        emit SetTaxFeePercent(liquiditySellFee);
         _liquiditySellFee = liquiditySellFee;
     }
 
@@ -690,14 +711,6 @@ contract ERC20FinalTestCoin11 is Context, IERC20, Ownable {
         return _amount.mul(_liquidityFee).div(
             10**2
         );
-    }
-
-    // Call the reflectFee function to destroy the number of tokens.
-    // tFee is added to the tFeeTotal variable, which is used to record the number
-    // of all tokens that have been destroyed.
-    function _reflectFee(uint256 rFee, uint256 tFee) private {
-        _reflectTotal = _reflectTotal.sub(rFee);
-        _takeFeeTotal = _takeFeeTotal.add(tFee);
     }
 
     function _getValues(uint256 tAmount) private view returns (uint256, uint256, uint256, uint256, uint256, uint256) {
@@ -951,8 +964,7 @@ contract ERC20FinalTestCoin11 is Context, IERC20, Ownable {
 
 
         _takeLiquidity(tLiquidity);
-        _reflectFee(rFee, tFee);
-
+        
         emit Transfer(sender, recipient, takeAmountToTransfer);
 
         if(!takeFee){restoreAllFee();}
